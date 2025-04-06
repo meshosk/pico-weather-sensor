@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pico BLE Web Client</title>
+</head>
+<body>
+  <h1>📲 Pripojenie na Pico BLE</h1>
+  <button onclick="connect()">🔗 Pripojiť</button>
+  <p id="data">Dáta: (čakám...)</p>
+
+  <script>
+    const SERVICE_UUID = "3ec837af-b0c6-4e7e-a8c5-4b31311d98cf";
+    const CHARACTERISTIC_UUID = "945c4d90-825d-452f-820a-0d8b0cc74a12";
+
+    let bleCharacteristic;
+
+    async function connect() {
+      try {
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ name: "pico2w" }],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+        await bleCharacteristic.startNotifications();
+        bleCharacteristic.addEventListener('characteristicvaluechanged', handleValueChanged);
+
+        console.log("✅ Pripojené!");
+      } catch (error) {
+        console.error("⚠️ Chyba pri pripojení:", error);
+      }
+    }
+
+    function handleValueChanged(event) {
+      const value = event.target.value;
+      
+      // Použitie DataView na prístup k hodnotám v ArrayBuffer
+      const dataView = new DataView(value.buffer);
+      
+
+      let d = {
+          temperature : dataView.getFloat32(0).toFixed(2),
+          humidity: dataView.getFloat32(4).toFixed(2),
+          pressure: dataView.getFloat32(8).toFixed(2),
+          seaPressure: dataView.getFloat32(12).toFixed(2),
+          batteryVoltage: dataView.getFloat32(16).toFixed(2),
+          batteryPercentage: dataView.getFloat32(20).toFixed(2),
+          usbPlugged: dataView.getUint8(24)
+      }
+      console.log(d);
+
+    }
+  </script>
+</body>
+</html>
